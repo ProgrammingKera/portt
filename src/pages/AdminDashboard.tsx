@@ -352,21 +352,39 @@ const AdminDashboard = () => {
   };
 
   const handleFileUpload = async (file: File, fileType: string) => {
-    setUploadError('');
-    try {
-      // For now, we'll simulate file upload since Supabase Storage bucket doesn't exist
-      // In a real implementation, you would need to create the 'portfolio-files' bucket in Supabase Storage
-      
-      setUploadError('File upload feature requires Supabase Storage bucket setup. Please contact administrator to configure storage.');
-      
-      // Alternative: You could implement a different file handling strategy here
-      // such as converting to base64 and storing in database, or using a different storage service
-      
-    } catch (error: any) {
-      console.error('Error uploading file:', error);
+  setUploadError('');
+  try {
+    // Upload to Supabase Storage
+    const filePath = `${fileType}/${Date.now()}_${file.name}`;
+    const { data, error } = await supabase.storage
+      .from('portfolio-files')
+      .upload(filePath, file, { upsert: true });
+
+    if (error) {
       setUploadError('Error uploading file: ' + error.message);
+      return;
     }
-  };
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('portfolio-files')
+      .getPublicUrl(filePath);
+
+    // Save file record in DB
+    await supabase.from('files').insert([{
+      file_name: file.name,
+      file_url: publicUrlData.publicUrl,
+      file_type: fileType,
+      is_active: true
+    }]);
+
+    setUploadError('');
+    alert('File uploaded successfully!');
+  } catch (error: any) {
+    console.error('Error uploading file:', error);
+    setUploadError('Error uploading file: ' + error.message);
+  }
+};
 
   const deleteFile = async (id: string, fileType: string) => {
     if (!confirm(`Are you sure you want to delete this ${fileType}?`)) return;
@@ -1112,15 +1130,18 @@ const AdminDashboard = () => {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Upload New CV</label>
                 <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setUploadError('File upload feature is currently disabled. Please use the existing CV download link in the portfolio.');
-                    }
-                  }}
-                  className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white"
-                />
+  type="file"
+  accept=".pdf,.doc,.docx"
+  onChange={async (e) => {
+    if (e.target.files?.[0]) {
+      setUploadingFile(true);
+      await handleFileUpload(e.target.files[0], 'cv');
+      setUploadingFile(false);
+      fetchData();
+    }
+  }}
+  className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white"
+/>
               </div>
               <div className="space-y-2">
                 <h4 className="font-semibold text-white">Current CV Files:</h4>
@@ -1150,15 +1171,18 @@ const AdminDashboard = () => {
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Upload New Profile Picture</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files?.[0]) {
-                      setUploadError('File upload feature is currently disabled. The current profile image is working fine.');
-                    }
-                  }}
-                  className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white"
-                />
+  type="file"
+  accept="image/*"
+  onChange={async (e) => {
+    if (e.target.files?.[0]) {
+      setUploadingFile(true);
+      await handleFileUpload(e.target.files[0], 'profile_pic');
+      setUploadingFile(false);
+      fetchData();
+    }
+  }}
+  className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white"
+/>
               </div>
               <div className="space-y-2">
                 <h4 className="font-semibold text-white">Current Profile Pictures:</h4>
