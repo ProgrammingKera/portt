@@ -1,21 +1,44 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { Menu, X, Download, MessageCircle } from 'lucide-react';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [cvUrl, setCvUrl] = useState<string>('/Abdullah CV (1).pdf');
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
+    fetchLatestCV();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const fetchLatestCV = async () => {
+    try {
+      const { data: files, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('file_type', 'cv')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (files) {
+        setCvUrl(files.file_url);
+      }
+    } catch (error) {
+      console.error('Error fetching latest CV:', error);
+    }
+  };
+
   const downloadCV = () => {
     const link = document.createElement('a');
-    link.href = '/Abdullah CV (1).pdf';
+    link.href = cvUrl;
     link.download = 'Abdullah_Hassan_CV.pdf';
     document.body.appendChild(link);
     link.click();
