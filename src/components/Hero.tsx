@@ -5,9 +5,12 @@ import { Github, Linkedin, Mail, MapPin, Phone, Download } from 'lucide-react';
 
 const Hero = () => {
   const [profile, setProfile] = useState<any>(null);
+  const [profileImage, setProfileImage] = useState<string>('/images/as.png');
+  const [cvUrl, setCvUrl] = useState<string>('/Abdullah CV (1).pdf');
 
   useEffect(() => {
     fetchProfile();
+    fetchFiles();
   }, []);
 
   const fetchProfile = async () => {
@@ -25,9 +28,36 @@ const Hero = () => {
     }
   };
 
+  const fetchFiles = async () => {
+    try {
+      const { data: files, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (files) {
+        // Find latest profile picture
+        const profilePic = files.find(file => file.file_type === 'profile_pic');
+        if (profilePic) {
+          setProfileImage(profilePic.file_url);
+        }
+
+        // Find latest CV
+        const cv = files.find(file => file.file_type === 'cv');
+        if (cv) {
+          setCvUrl(cv.file_url);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    }
+  };
   const downloadCV = () => {
     const link = document.createElement('a');
-    link.href = '/Abdullah CV (1).pdf';
+    link.href = cvUrl;
     link.download = 'Abdullah_Hassan_CV.pdf';
     document.body.appendChild(link);
     link.click();
@@ -105,9 +135,13 @@ const Hero = () => {
               <div className="w-80 h-80 lg:w-96 lg:h-96 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 p-1 animate-pulse-slow">
                 <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center">
                   <img
-                    src="/images/as.png"
+                    src={profileImage}
                     alt="Abdullah Hassan"
                     className="w-72 h-72 lg:w-88 lg:h-88 rounded-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/images/as.png';
+                    }}
                   />
                 </div>
               </div>

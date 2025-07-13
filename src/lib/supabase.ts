@@ -61,3 +61,55 @@ export type Experience = {
   description: string[];
   created_at: string;
 };
+// Helper function to upload file to Supabase Storage
+export const uploadFile = async (file: File, bucket: string, path: string) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path);
+
+    return { data, publicUrl };
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
+};
+
+// Helper function to save file record to database
+export const saveFileRecord = async (fileType: string, fileName: string, fileUrl: string) => {
+  try {
+    // First, deactivate existing files of the same type
+    await supabase
+      .from('files')
+      .update({ is_active: false })
+      .eq('file_type', fileType);
+
+    // Then insert new file record
+    const { data, error } = await supabase
+      .from('files')
+      .insert({
+        file_type: fileType,
+        file_name: fileName,
+        file_url: fileUrl,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error saving file record:', error);
+    throw error;
+  }
+};
