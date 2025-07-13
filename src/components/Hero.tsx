@@ -58,7 +58,7 @@ const Hero = () => {
   const downloadCV = () => {
     const link = document.createElement('a');
     link.href = cvUrl;
-    link.download = 'Abdullah_Hassan_CV.pdf';
+    link.download = profile?.name ? `${profile.name.replace(/\s+/g, '_')}_CV.pdf` : 'Abdullah_Hassan_CV.pdf';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
